@@ -8,25 +8,8 @@
 #include <vpad/input.h>
 #include <padscore/kpad.h>
 
-#include <SDL2/SDL.h>
-
 int main(int argc, char **argv)
 {
-    enum AXIS_NUM {
-        left_joy_x = 0,
-        left_joy_y = 1,
-        left_trigger = 2,
-        right_joy_x = 3,
-        right_joy_y = 4,
-        right_trigger = 5,
-		left_wiiu_joy_x = 0,
-        left_wiiu_joy_y = 1,
-        right_wiiu_joy_x = 2,
-        right_wiiu_joy_y = 3,
-		wiimote_joy_x = 0,
-        wiimote_joy_y = 1
-    };
-
     WHBProcInit();
     WHBLogConsoleInit();   
 
