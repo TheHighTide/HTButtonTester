@@ -5,7 +5,7 @@
 #include <whb/log_console.h>
 
 void ClearLog() {
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 75; i++) {
         WHBLogPrintf("\n");
     }
 }
