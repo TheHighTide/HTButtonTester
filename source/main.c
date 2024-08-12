@@ -11,7 +11,8 @@
 
 #include "htconsole.h"
 
-#define joystick_threshhold 0.5f
+#define JOYSTICK_THRESHHOLD 0.5f
+#define MAX_LINES 16
 
 typedef enum {
     JOYSTICK_CENTERED,
@@ -27,17 +28,17 @@ void CheckJoystickInput(KPADVec2D stick, JoystickDirection *lastDirection, const
     JoystickDirection currentDirection = JOYSTICK_CENTERED;
 
     // Determine the dominant direction
-    if (fabs(x) > joystick_threshhold || fabs(y) > joystick_threshhold) {
+    if (fabs(x) > JOYSTICK_THRESHHOLD || fabs(y) > JOYSTICK_THRESHHOLD) {
         if (fabs(x) > fabs(y)) {
-            if (x > joystick_threshhold) {
+            if (x > JOYSTICK_THRESHHOLD) {
                 currentDirection = JOYSTICK_RIGHT;
-            } else if (x < -joystick_threshhold) {
+            } else if (x < -JOYSTICK_THRESHHOLD) {
                 currentDirection = JOYSTICK_LEFT;
             }
         } else {
-            if (y > joystick_threshhold) {
+            if (y > JOYSTICK_THRESHHOLD) {
                 currentDirection = JOYSTICK_UP;
-            } else if (y < -joystick_threshhold) {
+            } else if (y < -JOYSTICK_THRESHHOLD) {
                 currentDirection = JOYSTICK_DOWN;
             }
         }
@@ -70,31 +71,27 @@ int main(int argc, char **argv)
     WPADInit();
     KPADInit();
     WHBLogConsoleInit();
+    WHBLogUdpInit();
 
     WPADEnableURCC(1);
 
     WHBLogPrintf("Welcome to HighTide's Button Tester for WiiU!"); // Welcome the user to the program because I'm nice
-    WHBLogPrintf("Version 2.1"); // Print the version number to the screen
-    WHBLogPrintf("Important News: This button tester now supports all types of compatable");
-    WHBLogPrintf("controllers for the WiiU and Wii! INCLUDING PRO CONTROLLERS!");
-    WHBLogPrintf("Add Supported controllers:");
+    WHBLogPrintf("Version 2.2"); // Print the version number to the screen
+    WHBLogPrintf("Supported controllers:");
     WHBLogPrintf("1. WiiU Gamepad");
-    WHBLogPrintf("2. Wii Controller");
-    WHBLogPrintf("3. Wii Controller + Nunchuk");
-    WHBLogPrintf("4. Wii Controller + Classic Controller");
-    WHBLogPrintf("5. Wii/WiiU Pro Controller");
+    WHBLogPrintf("2. WiiU Pro Controller");
     WHBLogPrintf("Send me a donation over at https://ko-fi.com/thehightide");
     WHBLogPrintf("Press PLUS and MINUS on the Gamepad to start the button test!");
     WHBLogPrintf("Press ZL/ZR/A to toggle into advanced mode");
+    WHBLogPrintf("--------------------------------------------------------------");
+    WHBLogPrintf("Press \"+\" to clear the screen and start the test!");
     
-    int passedTests = 0; // This will always be 0 until the user passes some tests
-    bool isInTest = false;
     bool isInAdvancedMode = false;
-    bool hasJustReturned = false;
     bool hasPrintedProLeftStick[4] = { false, false, false, false };
     bool hasPrintedProRightStick[4] = { false, false, false, false };
     JoystickDirection lastLeftDirection = JOYSTICK_CENTERED;
     JoystickDirection lastRightDirection = JOYSTICK_CENTERED;
+    bool isReadyToBegin = false;
 
     while(WHBProcIsRunning()) {
         VPADStatus vpad;
@@ -102,7 +99,7 @@ int main(int argc, char **argv)
         KPADStatus kpad;
         KPADReadEx(0, &kpad, 1, NULL);
 
-        if (isInAdvancedMode) {
+        if (isInAdvancedMode && isReadyToBegin) {
             ClearLog();
             KPADVec2D proLStick = kpad.pro.leftStick;
             KPADVec2D proRStick = kpad.pro.rightStick;
@@ -127,12 +124,11 @@ int main(int argc, char **argv)
 
             if ((kpad.pro.trigger & WPAD_PRO_BUTTON_PLUS) || (vpad.trigger & VPAD_BUTTON_PLUS)) {
                 isInAdvancedMode = false;
-                hasJustReturned = true;
                 ClearLog();
                 WHBLogPrintf("Successfully returned to basic mode!");
             }
         }
-        else {
+        else if (!isInAdvancedMode && isReadyToBegin) {
             // WiiU Gamepad
             if (vpad.trigger & VPAD_BUTTON_A) WHBLogPrintf("Gamepad A");
             if (vpad.trigger & VPAD_BUTTON_B) WHBLogPrintf("Gamepad B");
@@ -159,55 +155,10 @@ int main(int argc, char **argv)
             if (vpad.trigger & VPAD_STICK_R_EMULATION_LEFT) WHBLogPrintf("Gamepad RIGHT STICK LEFT");
             if (vpad.trigger & VPAD_STICK_R_EMULATION_UP) WHBLogPrintf("Gamepad RIGHT STICK UP");
             if (vpad.trigger & VPAD_STICK_R_EMULATION_RIGHT) WHBLogPrintf("Gamepad RIGHT STICK RIGHT");
-
-            // Wii Controller
-            if (kpad.trigger & WPAD_BUTTON_1) WHBLogPrintf("Wii 1");
-            if (kpad.trigger & WPAD_BUTTON_2) WHBLogPrintf("Wii 2");
-            if (kpad.trigger & WPAD_BUTTON_A) WHBLogPrintf("Wii A");
-            if (kpad.trigger & WPAD_BUTTON_B) WHBLogPrintf("Wii B");
-            if (kpad.trigger & WPAD_BUTTON_C) WHBLogPrintf("Wii C");
-            if (kpad.trigger & WPAD_BUTTON_DOWN) WHBLogPrintf("Wii DPAD DOWN");
-            if (kpad.trigger & WPAD_BUTTON_LEFT) WHBLogPrintf("Wii DPAD LEFT");
-            if (kpad.trigger & WPAD_BUTTON_MINUS) WHBLogPrintf("Wii MINUS");
-            if (kpad.trigger & WPAD_BUTTON_PLUS) WHBLogPrintf("Wii PLUS");
-            if (kpad.trigger & WPAD_BUTTON_RIGHT) WHBLogPrintf("Wii DPAD RIGHT");
-            if (kpad.trigger & WPAD_BUTTON_UP) WHBLogPrintf("Wii DPAD UP");
-            if (kpad.trigger & WPAD_BUTTON_Z) WHBLogPrintf("Wii Z");
-
-            // Wii Controller + Nunchuk
-            if (kpad.trigger & WPAD_NUNCHUK_BUTTON_C) WHBLogPrintf("Nunchuk C");
-            if (kpad.trigger & WPAD_NUNCHUK_BUTTON_Z) WHBLogPrintf("Nunchuk Z");
-            if (kpad.trigger & WPAD_NUNCHUK_STICK_EMULATION_DOWN) WHBLogPrintf("Nunchuk STICK DOWN");
-            if (kpad.trigger & WPAD_NUNCHUK_STICK_EMULATION_LEFT) WHBLogPrintf("Nunchuk STICK LEFT");
-            if (kpad.trigger & WPAD_NUNCHUK_STICK_EMULATION_UP) WHBLogPrintf("Nunchuk STICK UP");
-            if (kpad.trigger & WPAD_NUNCHUK_STICK_EMULATION_RIGHT) WHBLogPrintf("Nunchuk STICK RIGHT");
-
-            // Wii Controller + Classic Controller
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_A) WHBLogPrintf("Classic A");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_B) WHBLogPrintf("Classic B");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_DOWN) WHBLogPrintf("Classic DPAD DOWN");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_L) WHBLogPrintf("Classic L");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_LEFT) WHBLogPrintf("Classic DPAD LEFT");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_MINUS) WHBLogPrintf("Classic MINUS");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_PLUS) WHBLogPrintf("Classic PLUS");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_R) WHBLogPrintf("Classic R");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_RIGHT) WHBLogPrintf("Classic DPAD RIGHT");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_UP) WHBLogPrintf("Classic DPAD UP");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_X) WHBLogPrintf("Classic X");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_ZL) WHBLogPrintf("Classic ZL");
-            if (kpad.trigger & WPAD_CLASSIC_BUTTON_ZR) WHBLogPrintf("Classic ZR");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_L_EMULATION_DOWN) WHBLogPrintf("Classic LEFT STICK DOWN");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_L_EMULATION_LEFT) WHBLogPrintf("Classic LEFT STICK LEFT");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_L_EMULATION_UP) WHBLogPrintf("Classic LEFT STICK UP");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_L_EMULATION_RIGHT) WHBLogPrintf("Classic LEFT STICK RIGHT");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_R_EMULATION_DOWN) WHBLogPrintf("Classic RIGHT STICK DOWN");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_R_EMULATION_LEFT) WHBLogPrintf("Classic RIGHT STICK LEFT");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_R_EMULATION_UP) WHBLogPrintf("Classic RIGHT STICK UP");
-            if (kpad.trigger & WPAD_CLASSIC_STICK_R_EMULATION_RIGHT) WHBLogPrintf("Classic RIGHT STICK RIGHT");
-
-            // Wii Pro Controller
-            if (kpad.pro.trigger & WPAD_PRO_BUTTON_A) WHBLogPrintf("Pro B");
-            if (kpad.pro.trigger & WPAD_PRO_BUTTON_B) WHBLogPrintf("Pro A");
+            
+            // WiiU Pro Controller
+            if (kpad.pro.trigger & WPAD_PRO_BUTTON_B) WHBLogPrintf("Pro B");
+            if (kpad.pro.trigger & WPAD_PRO_BUTTON_A) WHBLogPrintf("Pro A");
             if (kpad.pro.trigger & WPAD_PRO_BUTTON_DOWN) WHBLogPrintf("Pro DPAD DOWN");
             if (kpad.pro.trigger & WPAD_PRO_BUTTON_LEFT) WHBLogPrintf("Pro DPAD LEFT");
             if (kpad.pro.trigger & WPAD_PRO_BUTTON_MINUS) WHBLogPrintf("Pro MINUS");
@@ -225,20 +176,20 @@ int main(int argc, char **argv)
 
             CheckJoystickInput(kpad.pro.leftStick, &lastLeftDirection, "LEFT");
             CheckJoystickInput(kpad.pro.rightStick, &lastRightDirection, "RIGHT");
-            
-            if (hasJustReturned) {
-                WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");
-                WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");WHBLogPrintf("");
-                hasJustReturned = false;
-            }
 
             if ((kpad.pro.hold & WPAD_PRO_TRIGGER_ZL) || (vpad.hold & VPAD_BUTTON_ZL)) {
                 if ((kpad.pro.hold & WPAD_PRO_TRIGGER_ZR) || (vpad.hold & VPAD_BUTTON_ZR)) {
-                    if ((kpad.pro.hold & WPAD_PRO_BUTTON_B) || (vpad.hold & VPAD_BUTTON_A)) {
+                    if ((kpad.pro.hold & WPAD_PRO_BUTTON_A) || (vpad.hold & VPAD_BUTTON_A)) {
                         isInAdvancedMode = true;
                         ClearLog();
                     }
                 }
+            }
+        }
+        else {
+            if ((kpad.pro.trigger & WPAD_PRO_BUTTON_PLUS) || (vpad.trigger & VPAD_BUTTON_PLUS)) {
+                isReadyToBegin = true;
+                ClearLog(); // Clear the console's screen to make it easier for the user to read whats on the screen
             }
         }
 
@@ -251,6 +202,7 @@ int main(int argc, char **argv)
     WHBLogConsoleDraw();
     OSSleepTicks(OSMillisecondsToTicks(1000));
 
+    WHBLogUdpDeinit();
     WHBLogConsoleFree();
     WHBProcShutdown();
 
